@@ -94,9 +94,9 @@
             if(this._mirror) {
                 // return new Point(0,0);
                 return this._rotation === 1 ? new Point(right - y - (h || 0), this._y + x) :
-                       this._rotation === 2 ? new Point(right - x - (w || 0), bottom - y - (h || 0)) :
+                       this._rotation === 2 ? new Point(right - this._size + x - (w || 0), bottom - y - (h || 0)) :
                        this._rotation === 3 ? new Point(this._x + y, bottom - x - (w || 0)) :
-                       new Point(this._x + x, this._y + y);
+                       new Point(this._x + this._size - x, this._y + y);
             } else {
                 return this._rotation === 1 ? new Point(right - y - (h || 0), this._y + x) :
                        this._rotation === 2 ? new Point(right - x - (w || 0), bottom - y - (h || 0)) :
@@ -106,7 +106,7 @@
 
         }
     };
-    Transform.noTransform = new Transform(0, 0, 0, 0);
+    Transform.noTransform = new Transform(0, 0, 0, 0, false);
     
     
     
@@ -139,7 +139,7 @@
         },
         
         /**
-         * Adds a polygon to the underlying renderer.
+         * Adds a circle to the underlying renderer.
          * Source: http://stackoverflow.com/a/2173084
          * @param {number} x The x-coordinate of the upper left corner of the rectangle holding the entire ellipse.
          * @param {number} y The y-coordinate of the upper left corner of the rectangle holding the entire ellipse.
@@ -307,11 +307,69 @@
             function (g, cell, index) {
                 var m = cell * 0.4, s = cell * 1.2;
                 if (!index) {
-                    g.addCircle(m, m, s);
+                    g.addCircle(m, m, s);                
                 }
             }
-        ],
         
+        ],
+        center: [
+
+            /* Eye */
+            /** @param {Graphics} g */            
+            function (g, cell, index) {
+                var s = cell * 0.1, m = cell - s;
+                for(var i=0;i<3;i++){
+                    var d = 0.8*cell*(i+1)/3;
+                    g.addCircle((cell-d)/2, (cell-d)/2, d, (i%2)==1);
+                }                
+            },
+            /* Eye */            
+            /** @param {Graphics} g */            
+            function (g, cell, index) {
+                for(var i=0;i<3;i++){
+                    var d = 0.8*cell*(i+2)/4;
+                    g.addCircle((cell-d)/2, (cell-d)/2, d, (i%2)==1);
+                }                
+            },
+            /* Eye */            
+            /** @param {Graphics} g */            
+            function (g, cell, index) {
+                for(var i=0;i<4;i++){
+                    var d = 0.8*cell*(i+1)/4;
+                    g.addCircle((cell-d)/2, (cell-d)/2, d, (i%2)==1);
+                }                
+            },
+            /* Eye */                        
+            /** @param {Graphics} g */            
+            function (g, cell, index) {
+                g.addRectangle(0, 0, cell, cell);
+                for(var i=0;i<3;i++){
+                    var d = 0.8*cell*(i+1)/3;
+                    g.addCircle((cell-d)/2, (cell-d)/2, d, (i%2)==0);
+                }                
+            },
+            /* Eye */                        
+            /** @param {Graphics} g */            
+            function (g, cell, index) {
+                g.addRectangle(0, 0, cell, cell);                
+                for(var i=0;i<3;i++){
+                    var d = 0.8*cell*(i+2)/4;
+                    g.addCircle((cell-d)/2, (cell-d)/2, d, (i%2)==0);
+                } 
+            },
+            /* Eye */                        
+            /** @param {Graphics} g */            
+            function (g, cell, index) {
+                g.addRectangle(0, 0, cell, cell);                
+                for(var i=0;i<4;i++){
+                    var d = 0.8*cell*(i+1)/4;
+                    g.addCircle((cell-d)/2, (cell-d)/2, d, (i%2)==0);
+                }    
+            }
+        ],
+
+        
+
         outer: [
             /** @param {Graphics} g */
             function (g, cell, index) {
@@ -327,8 +385,13 @@
             },
             /** @param {Graphics} g */
             function (g, cell, index) {
-                var m = cell / 6;
-                g.addCircle(m, m, cell - 2 * m);
+                var d = 0.25 * cell;
+                g.addCircle((cell-d)/2, (cell-d)/2, d);
+            },
+            /** @param {Graphics} g */
+            function (g, cell, index) {
+                var d = 0.8 * cell;
+                g.addCircle((cell-d)/2, (cell-d)/2, d);
             }
         ]
     };
@@ -455,7 +518,6 @@
             var r = rotationIndex ? parseInt(hash.charAt(rotationIndex), 16) : 0,
                 shape = shapes[parseInt(hash.charAt(index), 16) % shapes.length],
                 i;
-            
             renderer.beginShape(availableColors[selectedColorIndexes[colorIndex]]);
 
             // CHANGED!!
@@ -464,12 +526,12 @@
 
                 if(positions.length === 8){
                     graphics._transform = (i < positions.length/2)
-                        ? new Transform(x + positions[i][0] * cell, y + positions[i][1] * cell, cell, r++ % 4)
-                        : new Transform(x + positions[i][0] * cell, y + positions[i][1] * cell, cell, r++ % 4, true);
+                        ? new Transform(x + positions[i][0] * cell, y + positions[i][1] * cell, cell, r)
+                        : new Transform(x + positions[i][0] * cell, y + positions[i][1] * cell, cell, r, true);
                 } else {
                     graphics._transform = (i < positions.length/2)
-                        ? new Transform(x + positions[i][0] * cell, y + positions[i][1] * cell, cell, r++ % 4)
-                        : new Transform(x + positions[i][0] * cell, y + positions[i][1] * cell, cell, r++ % 4, true);
+                        ? new Transform(x + positions[i][0] * cell, y + positions[i][1] * cell, cell, r)
+                        : new Transform(x + positions[i][0] * cell, y + positions[i][1] * cell, cell, r, true);
                 }
                 shape(graphics, cell, i);
             }
@@ -509,11 +571,16 @@
         // ACTUAL RENDERING
         // CHANGED!!
         // Sides
-        renderShape(0, shapes.outer, 2, 3, [[1, 0], [0, 1], [0, 2], [1, 3], [2, 3], [3, 2], [3, 1], [2, 0]]);
+        renderShape(0, shapes.outer, 1, 3, [[1, 0], [2, 0]]);
+        renderShape(0, shapes.outer, 2, 3, [[0, 1], [3, 1]]);
+        renderShape(0, shapes.outer, 3, 3, [[0, 2], [3, 2]]);
+        renderShape(0, shapes.outer, 4, 3, [[1, 3], [2, 3]]);
+        // renderShape(0, shapes.outer, 2, 3, [ [0, 1],  [1, 3],  [3, 2],  [2, 0]]);
         // Corners
-        renderShape(1, shapes.outer, 4, 5, [[0, 0], [0, 3], [3, 3], [3, 0]]);
+        renderShape(1, shapes.outer, 5, 5, [[0, 0], [0, 3], [3, 3], [3, 0]]);
         // Center
-        renderShape(2, shapes.center, 1, null, [[1, 1], [1, 2], [2, 2], [2, 1]]);
+        renderShape(2, shapes.center, 6, null, [[1, 1], [2, 1]]);
+        renderShape(2, shapes.center, 7, null, [[1, 2], [2, 2]]);
     };
 
     
